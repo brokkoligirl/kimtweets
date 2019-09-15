@@ -8,6 +8,8 @@ Since the Twitter API only allows for the scraping of the last ~3500 or so tweet
 
 <hr>
 
+`tweet_grabber.py` contains the grab_all_tweets function with which a twitter timeline can be downloaded.
+
 Creating a new csv file with all available tweets:
 
 ```python
