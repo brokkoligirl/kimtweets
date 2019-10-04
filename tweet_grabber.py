@@ -1,6 +1,7 @@
 import GetOldTweets3 as Got3
 import csv
 import datetime
+import pandas as pd
 
 
 def grab_all_tweets(usr_name, n, filename, mode='w', date_since=None):
@@ -61,10 +62,43 @@ def grab_all_tweets(usr_name, n, filename, mode='w', date_since=None):
     print('finished saving tweets. total number of tweets downloaded: ', counter)
 
 
+def get_last_tweet_date(filename):
+    """
+    returns the date of the most recent tweet in the csv file as a string "YYYY-MM-DD"
+    :param filename:
+    """
+
+    df = pd.read_csv(filename, sep=',', usecols=['date'])
+    most_recent_tweet_date = df['date'].sort_values(ascending=False).reset_index(drop=True)[0]
+    return most_recent_tweet_date.split()[0]
+
+
+def drop_duplicates_and_sort(filename):
+    """
+    drops duplicate tweets and  sorts the csv file by date in a descending order
+    :param filename:
+    :return:
+    """
+
+    df = pd.read_csv(filename)
+    df.drop_duplicates(inplace=True)
+    df.sort_values(by=['date'], ascending=False, inplace=True)
+    df.to_csv(filename, index=False)
+
+
 if __name__ == '__main__':
 
+    filename = 'allkim.csv'
+
+    begin_date = get_last_tweet_date(filename)
+
     beginning = datetime.datetime.now()
-    print(beginning)
-    grab_all_tweets('kimkardashian', 0, 'allkim_copy_for_use.csv', "a", "2019-07-22")
+
+    grab_all_tweets(usr_name='kimkardashian', n=0, filename=filename,
+                    mode="a", date_since=begin_date)
+
     ending = datetime.datetime.now()
-    print(ending)
+
+    drop_duplicates_and_sort(filename)
+
+
