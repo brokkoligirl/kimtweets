@@ -2,6 +2,8 @@ import GetOldTweets3 as Got3
 import csv
 import datetime
 import pandas as pd
+import tweepy
+import configparser
 
 
 def grab_all_tweets(usr_name, n, filename, mode='w', date_since=None):
@@ -75,14 +77,57 @@ def get_last_tweet_date(filename):
 
 def drop_duplicates_and_sort(filename):
     """
-    drops duplicate tweets and  sorts the csv file by date in a descending order
+    drops duplicate tweets and sorts the csv file by date in a descending order
     :param filename:
     :return:
     """
 
     df = pd.read_csv(filename)
-    df.drop_duplicates(inplace=True)
+    df.drop_duplicates(subset="id", inplace=True)
     df.sort_values(by=['date'], ascending=False, inplace=True)
+    df.to_csv(filename, index=False)
+
+
+def get_twitter_tokens(filename='config.ini'):
+    """
+    fetches twitter API tokens from config file
+    :return: c_key, c_secret, a_token, a_token_secret
+    """
+
+    config = configparser.ConfigParser()
+    config.read(filename)
+    c_key = config['TWITTER']['consumer_key']
+    c_secret = config['TWITTER']['consumer_secret']
+    a_token = config['TWITTER']['access_token']
+    a_token_secret = config['TWITTER']['access_token_secret']
+
+    return c_key, c_secret, a_token, a_token_secret
+
+
+def twitter_auth(c_key, c_secret, a_token, a_token_secret):
+    """
+    function for twitter authentication.
+    :return: tweepy.API object
+    """
+
+    auth = tweepy.OAuthHandler(c_key, c_secret)
+    auth.set_access_token(a_token, a_token_secret)
+    api = tweepy.API(auth, wait_on_rate_limit=True)
+
+    return api
+
+
+def update_stats_for_recent_tweets(filename, api, num):
+
+    df = pd.read_csv(filename)
+    df.sort_values(by=['date'], ascending=False, inplace=True)
+    df.reset_index(drop=True)
+    for i in range(num):
+        tweet_id = df.iloc[i]['id']
+        status = api.statuses_lookup([tweet_id])
+        df.at[i, "favorites"] = status[0].favorite_count
+        df.at[i, "retweets"] = status[0].retweet_count
+
     df.to_csv(filename, index=False)
 
 
@@ -90,15 +135,17 @@ if __name__ == '__main__':
 
     filename = 'allkim.csv'
 
-    begin_date = get_last_tweet_date(filename)
+    c_key, c_secret, a_token, a_token_secret = get_twitter_tokens()
+    api = twitter_auth(c_key, c_secret, a_token, a_token_secret)
 
-    beginning = datetime.datetime.now()
+    update_stats_for_recent_tweets(filename, api, 40)
+
+    begin_date = get_last_tweet_date(filename)
 
     grab_all_tweets(usr_name='kimkardashian', n=0, filename=filename,
                     mode="a", date_since=begin_date)
 
-    ending = datetime.datetime.now()
-
     drop_duplicates_and_sort(filename)
+
 
 
